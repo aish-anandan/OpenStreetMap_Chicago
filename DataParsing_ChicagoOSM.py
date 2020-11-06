@@ -57,8 +57,9 @@ def shape_element(element):
             key = item.attrib['k']
             tag_list.append(key)
         if ('amenity' in tag_list or 'name' in tag_list) and element.get('lat') and element.get('lon'):
-            pos = [float(element.attrib['lat']),float(element.attrib['lon'])] 
-            node['pos'] = pos
+            geoloc['type'] = "Point"
+            geoloc['coordinates'] = [float(element.attrib['lon']),float(element.attrib['lat'])]             
+            node['geoloc'] = geoloc
             node['id'] = element.attrib['id']
             node['type'] = element.tag
             node['visible'] = element.get('visible')
