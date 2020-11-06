@@ -1,48 +1,69 @@
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
+Created on Tue Jun 16 22:09:20 2020
 
-This is a temporary script file.
+@author: Aishwarya
 """
 
-from pymongo import MongoClient
-from pymongo import GEO2D
-client = MongoClient('localhost:27017')
+from pymongo import MongoClient,GEO2D
+import json
+import nltk
+from nltk.corpus import wordnet 
 
-# Get a list of db names 
-dbs = MongoClient().list_database_names()
+#nltk.download('wordnet')
+#mongodb+srv://aish_anandan:08011995@cluster-1-twvy8.mongodb.net/<dbname>?retryWrites=true&w=majority
+client = MongoClient('localhost',27017)
+db = client.ChicagoOSM
+collection = db.Amenities
 
-# Create a database
-db = client["OpenStreetMapData"]
+file = open('./OpenStreetMap_Chicago/chicago_output_coord_fixed.json','r')
+data = json.load(file)
+      
+collection.insert_many(data)
 
-# Create a collection
-Chicago_OSM = db['Chicago']
+print(collection.count_documents({}))
 
-# Once the collection is created, insert the json data
-data = "<path>/Chicago_output.json"
-db.Chicago_OSM.insert(data)
+collection.create_index([("geoloc","2dsphere")])   
 
-# Verify
-print (db.Chicago_OSM.find_one())
+# Geometry
+input_point = [-87.65338,41.7379093] #[long, lat]
+dist_within_miles = 0.5 
+search_q = {
+ 'geoloc':
+    {'$near':
+        {'$geometry': 
+            {'type': "Point",
+             'coordinates': input_point
+             },
+            '$maxDistance': dist_within_miles*1609.34
+        }
+    }
+}
 
-# Publish Indexes to make the search easier
-db.Chicago_OSM.ensureIndex({"amenity":1})
-db.Chicago_OSM.ensureIndex({"name":1})
-db.Chicago_OSM.ensureIndex([("pos",GEO2D)])
+# Include amenities
+amenity = ["Hospital","Restaurant", "Pharmacy", "Church", "Public Transport", "School"]
+if amenity[3] == "Church":
+    list = [
+    {'amenity':'place_of_worship'},
+    {'name':{'$regex':'*[Cc]hurch*'}},
+    {'religion':{'$exists':True}}
+    ]
+    
+    search_q['$or'] = list
+    
+collection.find(search_q)
 
+res = collection.find(search_q)
+for i in res:
+    print(i)
+    
+'''
+synonyms = []
+for syn in wordnet.synsets("food"): 
+    for i in syn.hypernyms():
+        synonyms.append(i.name())
 
-search_tag = ["restaurant","Restaurant"]
-name_match = "/*estauarnt*/" # This can be improved using regex (WIP)
-current_location = [41.7153107, -87.9964622]
-
-matches = db.Chicago_OSM.find({"$or": [{ "amenity" : {"$in": search_tag}, "name": name_match}],"pos":{"$near":current_location}})
-
-# Add code for error handling - missing address components, if phone number is present display phone number
-for match in matches:
-    if "name" in match.keys():
-        print("Name : " + match["name"])
-    if "amenity" in match.keys():
-        print("Amenity : " + match["amenity"])
-    if "address" in match.keys():
-        print("Address : " + match["address"]["housenumber"] +"," + match["address"]["street"])
-
+first_word = wordnet.synset("worship.n.01")
+second_word = wordnet.synset("church.n.01")
+print('Similarity: ' + str(first_word.wup_similarity(second_word)))
+'''
