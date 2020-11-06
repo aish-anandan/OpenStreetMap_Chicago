@@ -11,7 +11,6 @@ import nltk
 from nltk.corpus import wordnet 
 
 #nltk.download('wordnet')
-#mongodb+srv://aish_anandan:08011995@cluster-1-twvy8.mongodb.net/<dbname>?retryWrites=true&w=majority
 client = MongoClient('localhost',27017)
 db = client.ChicagoOSM
 collection = db.Amenities
